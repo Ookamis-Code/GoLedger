@@ -1,8 +1,8 @@
 package main
 
 import (
-	"errors"
 	"fmt"
+	"time"
 )
 
 type Transaction struct {
@@ -13,32 +13,22 @@ type Ledger struct {
 	SeenIDs map[string]bool
 }
 
-func (l *Ledger) ProcessTrans(t Transaction) (string, error) {
-	if l.SeenIDs[t.ID] {
-		return "", errors.New("duplicate transaction ID")
-	}
-	if t.Amount <= 0 {
-		return "", errors.New("Invalid amount, Retry.")
-	}
-	l.SeenIDs[t.ID] = true
-	return fmt.Sprintf("Transaction Processed: $%.2f", t.Amount), nil
-}
-
 func main() {
-	myLedger := Ledger{SeenIDs: make(map[string]bool)}
-	t1 := Transaction{ID: "Robot1", Amount: 500.00}
-	t2 := Transaction{ID: "Robot1", Amount: 500.00}
-
-	msg, err := myLedger.ProcessTrans(t1)
-	if err != nil {
-		fmt.Println("Error:", err)
-	} else {
-		fmt.Println(msg)
-	}
-	msg2, err2 := myLedger.ProcessTrans(t2)
-	if err2 != nil {
-		fmt.Println("Error:", err2)
-	} else {
-		fmt.Println(msg2)
-	}
+	queue := make(chan Transaction)
+	go func() {
+		seen := make(map[string]bool)
+		for ts := range queue {
+			if seen[ts.ID] {
+				fmt.Printf("Duplicate transaction ID: %s\n", ts.ID)
+			} else {
+				seen[ts.ID] = true
+				fmt.Printf("Processed transaction: %s\n", ts.ID)
+			}
+		}
+	}()
+	queue <- Transaction{ID: "Robot1", Amount: 100.0}
+	queue <- Transaction{ID: "Robot2", Amount: 200.0}
+	queue <- Transaction{ID: "Robot1", Amount: 100.0}
+	time.Sleep(500 * time.Millisecond)
+	close(queue)
 }
